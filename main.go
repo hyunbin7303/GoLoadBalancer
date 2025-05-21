@@ -9,6 +9,14 @@ import (
 // 	iter iterator.Iterator
 // }
 
+// type backend struct {
+// 	url          *url.URL
+// 	alive        bool
+// 	mux          sync.RWMutex
+// 	connections  int
+// 	reverseProxy *httputil.ReverseProxy
+// }
+
 func main() {
 	lb_config, err := ReadConfig("config.yaml")
 	if err != nil {
