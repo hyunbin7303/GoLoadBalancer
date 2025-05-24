@@ -2,40 +2,33 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strings"
 )
 
-// type Server interface {
-// 	SetAlive(bool)
-// 	IsAlive() bool
-// 	GetURL() *url.URL
-// 	GetActiveConnections() int
-// 	Serve(http.ResponseWriter, *http.Request)
-// }
-
-// type ServerPool interface {
-// 	GetServers() []Server
-// 	GetNextValidPeer() Server
-// 	AddServer(Server)
-// 	RemoveServer(Server)
-// 	GetServerPoolSize() int
-// }
-
-type ServerPool struct {
-	servers []Server
-}
-
 type Server struct {
 	healthCheckPath string
 	Address         *url.URL
-	// IsAlive         bool
-	ServerMux    http.Handler // or use sync.RwMutex
-	ReverseProxy *httputil.ReverseProxy
+	ServerMux       http.Handler // or use sync.RwMutex
+	ReverseProxy    *httputil.ReverseProxy
 }
 
+func NewServer(address string, healthCheckPath string) *Server {
+	parseUrl, err := url.Parse(address)
+	if err != nil {
+		log.Fatalf("Invalid server url: %s", address)
+	}
+
+	return &Server{
+		healthCheckPath: healthCheckPath,
+		Address:         parseUrl,
+		ServerMux:       nil, // fow now
+		ReverseProxy:    httputil.NewSingleHostReverseProxy(parseUrl),
+	}
+}
 func (s *Server) SetAlive(alive bool) {
 	// TODO
 }

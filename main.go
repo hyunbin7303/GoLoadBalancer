@@ -1,30 +1,31 @@
 package main
 
 import (
-	"fmt"
 	"log"
+	"net/http"
 )
 
-// ``type LoadBalancer struct {
-// 	iter iterator.Iterator
-// }
-
-// type backend struct {
-// 	url          *url.URL
-// 	alive        bool
-// 	mux          sync.RWMutex
-// 	connections  int
-// 	reverseProxy *httputil.ReverseProxy
-// }
-
 func main() {
-	lb_config, err := ReadConfig("config.yaml")
-	if err != nil {
-		log.Fatalf("read config error: %s", err)
-	}
-	fmt.Println(lb_config)
-	// router := mux.NewRouter()
+	// lb_config, err := ReadConfig("config.yaml")
+	// if err != nil {
+	// 	log.Fatalf("read config error: %s", err)
+	// }
+	// fmt.Println(lb_config)
 
-	//1.  health checking for all existing services.
+	serverConfigs := []struct {
+		Address         string
+		HealthCheckPath string
+	}{
+		{"http://localhost:5001", "/health"},
+		{"http://localhost:5002", "/health"},
+		{"http://localhost:5003", "/health"},
+	}
+
+	pool := NewServerPool(serverConfigs)
+	log.Println("Server pool started at :8099")
+	if err := http.ListenAndServe(":8099", pool); err != nil {
+		// pool.GetNextServer()
+		log.Fatal(err)
+	}
 
 }
