@@ -1,42 +1,42 @@
 package main
 
 import (
-	"net/http"
 	"sync"
 )
 
-func NewServerPool(serverConfigs []struct {
-	Address         string
-	HealthCheckPath string
-}) *ServerPool {
-	servers := make([]*Server, len(serverConfigs))
-	for i, cfg := range serverConfigs {
-		servers[i] = NewServer(cfg.Address, cfg.HealthCheckPath)
-	}
-	return &ServerPool{Servers: servers}
-}
-
 type ServerPool struct {
 	Servers []*Server
-	mu      sync.Mutex
-	idx     int
+	mux     sync.RWMutex
+	curr    int
+}
+
+func (sp *ServerPool) Rotate() *Server {
+	sp.mux.Lock()
+	sp.curr = (sp.curr + 1) % len(sp.Servers)
+	sp.mux.Unlock()
+	return sp.Servers[sp.curr]
 }
 
 func (sp *ServerPool) GetNextServer() *Server {
-	sp.mu.Lock()
-	server := sp.Servers[sp.idx%len(sp.Servers)]
-	sp.idx++
-	sp.mu.Unlock()
-	return server
+	for i := 0; i < len(sp.Servers); i++ {
+		nextPeer := sp.Rotate()
+		if nextPeer.Alive {
+			return nextPeer
+		}
+	}
+	return nil
 }
 
 func (sp *ServerPool) AddServer(server *Server) {
-	sp.mu.Lock()
+	// sp.Rotate().mux.Lock()
 	sp.Servers = append(sp.Servers, server)
-	sp.mu.Unlock()
+	// sp.mux.Unlock()
 }
 
-func (sp *ServerPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	server := sp.GetNextServer()
-	server.ReverseProxy.ServeHTTP(w, r)
-}
+// func HealthCheck(ctx context.Context, sp ServerPool) {
+// 	// aliveChannel := make(chan bool, 1)
+// 	// for _, server := range sp.Servers {
+// 	// 	server := server
+// 	// 	requestCtx, stop := context.WithTimeout(ctx, 10)
+// 	// }
+// }

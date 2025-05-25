@@ -1,6 +1,14 @@
 # GoLoadBalancer
 Understanding the fundamental knowledge of load balancer. How it operates?
 
+.. which server a request is going to be forwarded.
+
+Using Round Robin Algorithm - distributes the load equally among the servers and doing a rotation based on it....~~~
+
+
+Checked for the Weighted Round Robin.
+-
+
 ## Load balancer setup
 
 ## Listener

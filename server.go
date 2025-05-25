@@ -7,12 +7,14 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"strings"
+	"sync"
 )
 
 type Server struct {
 	healthCheckPath string
+	Alive           bool
 	Address         *url.URL
-	ServerMux       http.Handler // or use sync.RwMutex
+	mux             sync.RWMutex
 	ReverseProxy    *httputil.ReverseProxy
 }
 
@@ -25,21 +27,15 @@ func NewServer(address string, healthCheckPath string) *Server {
 	return &Server{
 		healthCheckPath: healthCheckPath,
 		Address:         parseUrl,
-		ServerMux:       nil, // fow now
-		ReverseProxy:    httputil.NewSingleHostReverseProxy(parseUrl),
+		Alive:           true,
+		//TODO
+		ReverseProxy: httputil.NewSingleHostReverseProxy(parseUrl),
 	}
 }
 func (s *Server) SetAlive(alive bool) {
-	// TODO
-}
-
-func (s *Server) IsAlive() bool {
-	// TODO
-	return false
-}
-
-func (s *Server) Serve(w http.ResponseWriter, req *http.Request) {
-	s.ReverseProxy.ServeHTTP(w, req)
+	s.mux.Lock()
+	s.Alive = alive
+	s.mux.Unlock()
 }
 
 func NewDevServer(addr string) *Server {
@@ -55,8 +51,8 @@ func NewDevServer(addr string) *Server {
 	return &Server{
 		healthCheckPath: serverUrl.String(),
 		Address:         serverUrl,
-		ServerMux:       mux,
-		ReverseProxy:    NewSingleHostReverseProxy(serverUrl),
+		// ServerMux:       mux,
+		ReverseProxy: NewSingleHostReverseProxy(serverUrl),
 	}
 
 }
