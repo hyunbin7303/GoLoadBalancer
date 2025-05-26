@@ -44,7 +44,7 @@ func main() {
 	}{
 		{"http://localhost:5061", "/health"},
 		{"http://localhost:5062", "/health"},
-		{"http://localhost:5063", "/health"},
+		// {"http://localhost:5063", "/health"},
 	}
 
 	// pool := NewServerPool(serverConfigs)
@@ -56,7 +56,7 @@ func main() {
 		}
 		proxy := httputil.NewSingleHostReverseProxy(serverUrl)
 		proxy.ErrorHandler = func(writer http.ResponseWriter, request *http.Request, e error) {
-			log.Fatal("[%s] %s\n", serverUrl.Host, e.Error())
+			log.Fatalf("[%s] %s\n", serverUrl.Host, e)
 			log.Fatal("Error handling the request", e)
 			retries := GetRetryFromContext(request)
 			if retries < 3 {
@@ -72,7 +72,6 @@ func main() {
 		log.Printf("Server is configured : %s\n", serverUrl)
 	}
 
-	// Creating http server
 	server := http.Server{
 		Addr:    fmt.Sprintf(":%d", 8099),
 		Handler: http.HandlerFunc(loadBalancing),
@@ -80,7 +79,7 @@ func main() {
 
 	// go serverPool.LaunchHealthCheck(ctx, serverPool)
 
-	log.Println("Load Balancer - activated with port :%d\n", 8099)
+	log.Printf("Load Balancer - activated with port :%d\n", 8099)
 	if err := server.ListenAndServe(); err != http.ErrServerClosed {
 		log.Fatalf("ListenAndServer() Error", err)
 	}
