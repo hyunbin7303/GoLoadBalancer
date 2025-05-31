@@ -1,7 +1,11 @@
 package main
 
 import (
+	"log"
+	"net"
+	"net/url"
 	"sync"
+	"time"
 )
 
 type ServerPool struct {
@@ -33,10 +37,25 @@ func (sp *ServerPool) AddServer(server *Server) {
 	// sp.mux.Unlock()
 }
 
-// func HealthCheck(ctx context.Context, sp ServerPool) {
-// 	// aliveChannel := make(chan bool, 1)
-// 	// for _, server := range sp.Servers {
-// 	// 	server := server
-// 	// 	requestCtx, stop := context.WithTimeout(ctx, 10)
-// 	// }
-// }
+func (sp *ServerPool) HealthCheck() {
+	for _, s := range sp.Servers {
+		status := "up"
+		alive := isBackendAlive(s.Address)
+		s.SetAlive(alive)
+		if !alive {
+			status = "down"
+		}
+		log.Printf("%s [%s]\n", s.Address, status)
+	}
+}
+
+func isBackendAlive(u *url.URL) bool {
+	timeout := 2 * time.Second
+	conn, err := net.DialTimeout("tcp", u.Host, timeout)
+	if err != nil {
+		log.Println("Site unreachable, error: ", err)
+		return false
+	}
+	defer conn.Close()
+	return true
+}

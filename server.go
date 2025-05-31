@@ -14,6 +14,12 @@ type Server struct {
 	ReverseProxy    *httputil.ReverseProxy
 }
 
+func (s *Server) SetAlive(alive bool) {
+	s.mux.Lock()
+	s.Alive = alive
+	s.mux.Unlock()
+}
+
 // func (s *Server) SetAlive(alive bool) {
 // 	s.mux.Lock()
 // 	s.Alive = alive
