@@ -10,20 +10,11 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 )
-
-const (
-	Attempts int = iota
-	Retry
-)
-
-func GetRetryFromContext(r *http.Request) int {
-	if retry, ok := r.Context().Value(Retry).(int); ok {
-		return retry
-	}
-	return 0
-}
 
 func loadBalancing(w http.ResponseWriter, r *http.Request) {
 	log.Println("Arrived Request : " + r.RequestURI)
@@ -44,22 +35,25 @@ func main() {
 	}
 	fmt.Println(lb_config)
 
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	for _, s := range lb_config.ServersPath {
 		serverUrl, err := url.Parse(s)
 		if err != nil {
 			log.Fatal(err)
 		}
 		rp := httputil.NewSingleHostReverseProxy(serverUrl)
-		backend := server.NewServer(serverUrl, rp)
+		backend := server.NewServer(serverUrl, rp, lb_config.HealthCheckPath)
 		rp.ErrorHandler = func(writer http.ResponseWriter, request *http.Request, e error) {
 			log.Fatalf("[%s] %s\n", serverUrl.Host, e)
 			log.Fatal("Error handling the request", e)
-			retries := GetRetryFromContext(request)
+			retries := utils.GetRetryFromContext(request)
 			if retries < lb_config.RetryLimit {
 				log.Println("Retrying... ")
 				select {
 				case <-time.After(10 * time.Millisecond):
-					ctx := context.WithValue(request.Context(), Retry, retries+1)
+					ctx := context.WithValue(request.Context(), 1, retries+1)
 					rp.ServeHTTP(writer, request.WithContext(ctx))
 				}
 				return
@@ -77,7 +71,25 @@ func main() {
 		Handler: http.HandlerFunc(loadBalancing),
 	}
 
-	go serverPool.HealthCheck()
+	// go serverPool.HealthCheck()
+	go serverpool.LauchHealthCheck(ctx, serverPool)
+	// go func() {
+	// 	<-ctx.Done()
+	// 	shutdownCtx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	// 	if err := server.Shutdown(shutdownCtx); err != nil {
+	// 		log.Fatal(err)
+	// 	}
+	// }()
+
+	// go serverPool.HealthCheck()
+	// go serverpool.HealthCheck(ctx, serverPool)
+	// go func() {
+	// 	<-ctx.Done()
+	// 	shutdownCtx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	// 	if err := server.Shutdown(shutdownCtx); err != nil {
+	// 		log.Fatal(err)
+	// 	}
+	// }()
 
 	log.Printf("Load Balancer - activated with port :%d\n", lb_config.Port)
 	if err := server.ListenAndServe(); err != http.ErrServerClosed {

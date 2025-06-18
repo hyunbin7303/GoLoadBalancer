@@ -20,11 +20,12 @@ func (s *Server) SetAlive(alive bool) {
 	s.mux.Unlock()
 }
 
-func NewServer(u *url.URL, reverseProxy *httputil.ReverseProxy) *Server {
+func NewServer(u *url.URL, reverseProxy *httputil.ReverseProxy, healthcheck_path string) *Server {
 	return &Server{
-		Address:      u,
-		Alive:        true,
-		ReverseProxy: reverseProxy,
+		Address:         u,
+		Alive:           true,
+		ReverseProxy:    reverseProxy,
+		HealthCheckPath: healthcheck_path,
 	}
 }
 

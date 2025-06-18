@@ -2,6 +2,7 @@ package serverpool
 
 import (
 	"HpLoadBalancer/lb/server"
+	"context"
 	"log"
 	"net"
 	"net/url"
@@ -50,9 +51,22 @@ func (sp *ServerPool) HealthCheck() {
 	}
 }
 
+func LauchHealthCheck(ctx context.Context, sp ServerPool) {
+	t := time.NewTicker(time.Second * 10)
+	log.Println("Starting Health check.")
+	for {
+		select {
+		case <-t.C:
+			go HealthCheck(ctx, sp)
+		case <-ctx.Done():
+			log.Println("Closing health check.")
+			return
+		}
+	}
+}
+
 func isBackendAlive(u *url.URL) bool {
-	timeout := 2 * time.Second
-	conn, err := net.DialTimeout("tcp", u.Host, timeout)
+	conn, err := net.DialTimeout("tcp", u.Host, 2*time.Second)
 	if err != nil {
 		log.Println("Site unreachable, error: ", err)
 		return false
