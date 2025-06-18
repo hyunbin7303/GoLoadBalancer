@@ -24,6 +24,7 @@ func GetRetryFromContext(r *http.Request) int {
 }
 
 func loadBalancing(w http.ResponseWriter, r *http.Request) {
+	log.Println("Arrived Request : " + r.RequestURI)
 	peer := serverPool.GetNextServer()
 	if peer != nil {
 		peer.ReverseProxy.ServeHTTP(w, r)
@@ -36,6 +37,7 @@ func IsServerAlive(ctx context.Context, aliveChannel chan bool, u *url.URL) {
 	var d net.Dialer
 	conn, err := d.DialContext(ctx, "tcp", u.Host)
 	if err != nil {
+		log.Fatal("Checking for IsServerAlive")
 		log.Fatal(err)
 		aliveChannel <- false
 		return
@@ -71,25 +73,24 @@ func HealthCheck(ctx context.Context, sp ServerPool) {
 var serverPool ServerPool
 
 func main() {
-	// lb_config, err := ReadConfig("config.yaml")
-	// if err != nil {
-	// 	log.Fatalf("read config error: %s", err)
-	// }
-	// fmt.Println(lb_config)
+	lb_config, err := ReadConfig("config.yaml")
+	if err != nil {
+		log.Fatalf("read config error: %s", err)
+	}
+	fmt.Println(lb_config)
 
 	serverConfigs := []struct {
 		Address         string
 		HealthCheckPath string
 	}{
-		{"http://localhost:5061", "/health"},
-		{"http://localhost:5062", "/health"},
-		// {"http://localhost:5063", "/health"},
+		{"http://localhost:5010", "/health"},
+		{"http://localhost:5011", "/health"},
+		{"http://localhost:5012", "/health"},
 	}
 
 	// pool := NewServerPool(serverConfigs)
-	for _, server := range serverConfigs {
-		u := server.Address
-		serverUrl, err := url.Parse(u)
+	for _, server := range lb_config.ServersPath {
+		serverUrl, err := url.Parse(server)
 		if err != nil {
 			log.Fatal(err)
 		}

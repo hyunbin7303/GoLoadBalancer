@@ -1,0 +1,10 @@
+lb_port: 3333
+retry_limit: 3
+servers_path:
+  - "http://localhost:5010"
+  - "http://localhost:5011"
+  - "http://localhost:5012"
+tcp_health_check: true
+max_allowed: 3
+health_check_path: "/health"
+
