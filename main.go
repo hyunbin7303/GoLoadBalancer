@@ -71,25 +71,14 @@ func main() {
 		Handler: http.HandlerFunc(loadBalancing),
 	}
 
-	// go serverPool.HealthCheck()
 	go serverpool.LauchHealthCheck(ctx, serverPool)
-	// go func() {
-	// 	<-ctx.Done()
-	// 	shutdownCtx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	// 	if err := server.Shutdown(shutdownCtx); err != nil {
-	// 		log.Fatal(err)
-	// 	}
-	// }()
-
-	// go serverPool.HealthCheck()
-	// go serverpool.HealthCheck(ctx, serverPool)
-	// go func() {
-	// 	<-ctx.Done()
-	// 	shutdownCtx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	// 	if err := server.Shutdown(shutdownCtx); err != nil {
-	// 		log.Fatal(err)
-	// 	}
-	// }()
+	go func() {
+		<-ctx.Done()
+		shutdownCtx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	log.Printf("Load Balancer - activated with port :%d\n", lb_config.Port)
 	if err := server.ListenAndServe(); err != http.ErrServerClosed {

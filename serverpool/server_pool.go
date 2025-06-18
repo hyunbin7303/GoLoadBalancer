@@ -4,8 +4,6 @@ import (
 	"HpLoadBalancer/lb/server"
 	"context"
 	"log"
-	"net"
-	"net/url"
 	"sync"
 	"time"
 )
@@ -39,18 +37,6 @@ func (sp *ServerPool) AddServer(server *server.Server) {
 	// sp.mux.Unlock()
 }
 
-func (sp *ServerPool) HealthCheck() {
-	for _, s := range sp.Servers {
-		status := "up"
-		alive := isBackendAlive(s.Address)
-		s.SetAlive(alive)
-		if !alive {
-			status = "down"
-		}
-		log.Printf("%s [%s]\n", s.Address, status)
-	}
-}
-
 func LauchHealthCheck(ctx context.Context, sp ServerPool) {
 	t := time.NewTicker(time.Second * 10)
 	log.Println("Starting Health check.")
@@ -63,14 +49,4 @@ func LauchHealthCheck(ctx context.Context, sp ServerPool) {
 			return
 		}
 	}
-}
-
-func isBackendAlive(u *url.URL) bool {
-	conn, err := net.DialTimeout("tcp", u.Host, 2*time.Second)
-	if err != nil {
-		log.Println("Site unreachable, error: ", err)
-		return false
-	}
-	defer conn.Close()
-	return true
 }
