@@ -20,11 +20,13 @@ func (s *Server) SetAlive(alive bool) {
 	s.mux.Unlock()
 }
 
-// func (s *Server) SetAlive(alive bool) {
-// 	s.mux.Lock()
-// 	s.Alive = alive
-// 	s.mux.Unlock()
-// }
+func NewServer(u *url.URL, reverseProxy *httputil.ReverseProxy) *Server {
+	return &Server{
+		Address:      u,
+		Alive:        true,
+		ReverseProxy: reverseProxy,
+	}
+}
 
 // func singleJoiningSlash(a, b string) string {
 // 	aslash := strings.HasSuffix(a, "/")

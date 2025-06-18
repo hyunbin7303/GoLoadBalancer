@@ -19,6 +19,7 @@ type Config struct {
 	HealthCheck       bool     `yaml:"tcp_health_check"`
 	HealthCheckPath   string   `yaml:"health_check_path"`
 	MaxAllowed        uint     `yaml:"max_allowed"`
+	RetryLimit        int      `yaml:"retry_limit"`
 }
 
 func ReadConfig(fileName string) (*Config, error) {

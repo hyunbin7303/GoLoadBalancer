@@ -79,36 +79,29 @@ func main() {
 	}
 	fmt.Println(lb_config)
 
-	serverConfigs := []struct {
-		Address         string
-		HealthCheckPath string
-	}{
-		{"http://localhost:5010", "/health"},
-		{"http://localhost:5011", "/health"},
-		{"http://localhost:5012", "/health"},
-	}
-
 	// pool := NewServerPool(serverConfigs)
 	for _, server := range lb_config.ServersPath {
 		serverUrl, err := url.Parse(server)
 		if err != nil {
 			log.Fatal(err)
 		}
-		proxy := httputil.NewSingleHostReverseProxy(serverUrl)
-		proxy.ErrorHandler = func(writer http.ResponseWriter, request *http.Request, e error) {
+		rp := httputil.NewSingleHostReverseProxy(serverUrl)
+		server := NewServer(serverUrl, rp)
+		rp.ErrorHandler = func(writer http.ResponseWriter, request *http.Request, e error) {
 			log.Fatalf("[%s] %s\n", serverUrl.Host, e)
 			log.Fatal("Error handling the request", e)
 			retries := GetRetryFromContext(request)
-			if retries < 3 {
-
+			if retries < lb_config.RetryLimit {
+				log.Println("Retrying... ")
+				select {
+				case <-time.After(10 * time.Millisecond):
+					ctx := context.WithValue(request.Context(), Retry, retries+1)
+					rp.ServeHTTP(writer, request.WithContext(ctx))
+				}
+				return
 			}
 		}
-
-		serverPool.AddServer(&Server{
-			Address:      serverUrl,
-			Alive:        true,
-			ReverseProxy: proxy,
-		})
+		serverPool.AddServer(server)
 		log.Printf("Server is configured : %s\n", serverUrl)
 	}
 
