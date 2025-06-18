@@ -1,6 +1,7 @@
-package main
+package serverpool
 
 import (
+	"HpLoadBalancer/lb/server"
 	"log"
 	"net"
 	"net/url"
@@ -9,19 +10,19 @@ import (
 )
 
 type ServerPool struct {
-	Servers []*Server
+	Servers []*server.Server
 	mux     sync.RWMutex
 	curr    int
 }
 
-func (sp *ServerPool) Rotate() *Server {
+func (sp *ServerPool) Rotate() *server.Server {
 	sp.mux.Lock()
 	sp.curr = (sp.curr + 1) % len(sp.Servers)
 	sp.mux.Unlock()
 	return sp.Servers[sp.curr]
 }
 
-func (sp *ServerPool) GetNextServer() *Server {
+func (sp *ServerPool) GetNextServer() *server.Server {
 	for i := 0; i < len(sp.Servers); i++ {
 		nextPeer := sp.Rotate()
 		if nextPeer.Alive {
@@ -31,7 +32,7 @@ func (sp *ServerPool) GetNextServer() *Server {
 	return nil
 }
 
-func (sp *ServerPool) AddServer(server *Server) {
+func (sp *ServerPool) AddServer(server *server.Server) {
 	// sp.Rotate().mux.Lock()
 	sp.Servers = append(sp.Servers, server)
 	// sp.mux.Unlock()

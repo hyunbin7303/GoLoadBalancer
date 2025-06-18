@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"net/http/httputil"
@@ -7,7 +7,7 @@ import (
 )
 
 type Server struct {
-	healthCheckPath string
+	HealthCheckPath string
 	Alive           bool
 	Address         *url.URL
 	mux             sync.RWMutex

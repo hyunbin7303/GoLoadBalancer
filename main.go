@@ -1,10 +1,12 @@
 package main
 
 import (
+	"HpLoadBalancer/lb/server"
+	"HpLoadBalancer/lb/serverpool"
+	"HpLoadBalancer/lb/utils"
 	"context"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -33,60 +35,22 @@ func loadBalancing(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Service is not available", http.StatusServiceUnavailable)
 }
 
-func IsServerAlive(ctx context.Context, aliveChannel chan bool, u *url.URL) {
-	var d net.Dialer
-	conn, err := d.DialContext(ctx, "tcp", u.Host)
-	if err != nil {
-		log.Fatal("Checking for IsServerAlive")
-		log.Fatal(err)
-		aliveChannel <- false
-		return
-	}
-	_ = conn.Close()
-	aliveChannel <- true
-}
-
-func HealthCheck(ctx context.Context, sp ServerPool) {
-	aliveChannel := make(chan bool, 1)
-	for _, server := range sp.Servers {
-		server := server
-		requestCtx, stop := context.WithTimeout(ctx, 10*time.Second)
-		defer stop()
-		status := "up"
-		go IsServerAlive(requestCtx, aliveChannel, server.Address)
-
-		select {
-		case <-ctx.Done():
-			log.Println("Shutting down health check")
-			return
-		case alive := <-aliveChannel:
-			server.Alive = alive
-			if !alive {
-				status = "down"
-			}
-		}
-		log.Printf("URL Status : %s", status)
-	}
-
-}
-
-var serverPool ServerPool
+var serverPool serverpool.ServerPool
 
 func main() {
-	lb_config, err := ReadConfig("config.yaml")
+	lb_config, err := utils.ReadConfig("config.yaml")
 	if err != nil {
 		log.Fatalf("read config error: %s", err)
 	}
 	fmt.Println(lb_config)
 
-	// pool := NewServerPool(serverConfigs)
-	for _, server := range lb_config.ServersPath {
-		serverUrl, err := url.Parse(server)
+	for _, s := range lb_config.ServersPath {
+		serverUrl, err := url.Parse(s)
 		if err != nil {
 			log.Fatal(err)
 		}
 		rp := httputil.NewSingleHostReverseProxy(serverUrl)
-		server := NewServer(serverUrl, rp)
+		backend := server.NewServer(serverUrl, rp)
 		rp.ErrorHandler = func(writer http.ResponseWriter, request *http.Request, e error) {
 			log.Fatalf("[%s] %s\n", serverUrl.Host, e)
 			log.Fatal("Error handling the request", e)
@@ -100,26 +64,26 @@ func main() {
 				}
 				return
 			}
+			log.Println("Set Alive false.")
+			backend.SetAlive(false) // after retries, mark this server as down.
 		}
-		serverPool.AddServer(server)
+
+		serverPool.AddServer(backend)
 		log.Printf("Server is configured : %s\n", serverUrl)
 	}
 
 	server := http.Server{
-		Addr:    fmt.Sprintf(":%d", 8099),
+		Addr:    fmt.Sprintf(":%d", lb_config.Port),
 		Handler: http.HandlerFunc(loadBalancing),
 	}
 
 	go serverPool.HealthCheck()
 
-	log.Printf("Load Balancer - activated with port :%d\n", 8099)
+	log.Printf("Load Balancer - activated with port :%d\n", lb_config.Port)
 	if err := server.ListenAndServe(); err != http.ErrServerClosed {
 		log.Fatalf("listen and server error :[%s] \n", err)
 	}
 }
 
-//https://github.com/leonardo5621/golang-load-balancer/blob/master/main.go
 //https://github.com/kasvith/simplelb/blob/master/main.go#L73
 //https://medium.com/@leonardo5621_66451/building-a-load-balancer-in-go-1c68131dc0ef
-// https://github.com/kasvith/simplelb/blob/master/main.go
-//https://github.com/Fuad28/load-balancer/blob/master/load_balancer.go
